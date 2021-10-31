@@ -1,0 +1,330 @@
+import java.awt.Point;
+import java.util.Stack;
+import java.util.Queue;
+import java.util.LinkedList;
+
+/*
+ * CIT360 Maze Assignment
+ * Team Members: Hunter Hockman, Anthony Esposito, Kreg Heckel
+ */
+public class MazeProject
+{
+public static void main (String [] args)
+{
+int MAX = 10;
+int MIN = 0;
+double DENSITY = 0.3;
+Stack<Point> DFS = new Stack<Point>();//Stack for DFS
+Queue<Point> BFS = new LinkedList<Point>();//queue for BFS
+int[][] distance = new int[MAX][MAX];//array to keep track of distance for BFS
+char[][] maze = new char[MAX][MAX];
+char[][] copyMaze = new char[MAX][MAX];
+mazeMaker(maze, DENSITY);//creates a maze using the density value
+//stores a copy of the maze in copy maze
+for(int i = 0; i < maze.length; i++)
+{
+for(int j = 0; j < maze.length; j++)
+{
+copyMaze[i][j] = maze[i][j];
+}
+}
+distanceMaker(distance);
+Point startPoint = pointRandomizer(MIN+1,MAX-1,maze);//start point for DFS and BFS
+Point endPoint = pointRandomizer(MIN + 1,MAX-1,maze);//end point for DFS and BFS
+
+System.out.println("Randomly generated maze:");
+printMaze(maze);//prints the maze before a path is found
+System.out.println();
+System.out.println("Randomly generated start point: " + "(" +  (int)startPoint.getX() + ", " + (int)startPoint.getY() + ")");
+System.out.println("Randomly generated end point: " + "(" + (int)endPoint.getX() + ", " + (int)endPoint.getY()+ ")");
+DFS(DFS, maze,startPoint, endPoint);//calls the DFS method
+mazeCleaner(maze, startPoint, endPoint);//calls the maze cleaner method to remove unneeded values in the DFS maze
+System.out.println();//prints a blank line to help make readability better
+System.out.println("Path found using DFS");
+printMaze(maze);//prints the maze after DFS attempted to find a path
+BFS(BFS, copyMaze, startPoint, endPoint, distance);//calls the BFS method
+mazeCleaner(copyMaze, startPoint, endPoint);//calls the maze cleaner method to remove unneeded values in the BFS maze
+System.out.println();//prints a blank line to help make readability better
+System.out.println("Path found using BFS");
+printMaze(copyMaze);//prints the maze after BFS attempted to find a path
+}
+//method that removes unneeded values from the maze
+public static void mazeCleaner(char[][] maze, Point startPoint, Point endPoint)
+{
+//for loops that go through maze and remove anything that isn't a wall, blank space, or a path marker
+for(int i = 0; i < maze.length; i++)
+{
+for(int j = 0; j < maze.length; j++)
+{
+if(maze[i][j] != '1' && maze[i][j] != ' ' && maze[i][j] != '*')
+{
+maze[i][j] = ' ';
+}
+}
+}
+//resets start and end point to S and E
+maze[(int)startPoint.getX()][(int)startPoint.getY()] = 'S';
+maze[(int)endPoint.getX()][(int)endPoint.getY()] = 'E';
+}
+//creates a point with a random x and y between the values min and max inclusive
+public static Point pointRandomizer(int min, int max, char[][] maze)
+{
+boolean isValid = false;
+int x = (int) Math.floor(Math.random()*(max-min+1)+min);//sets x to a random int between the min and max inclusive
+int y = (int) Math.floor(Math.random()*(max-min+1)+min);//sets y to a random int between the min and max inclusive
+Point p = new Point(x,y);//creates a point with the values of x and y
+while(isValid == false)
+{
+//checks to see if the random point is a wall if it is a new point is generated
+if(maze[(int)p.getX()][(int)p.getY()] == '1')
+{
+x = (int) Math.floor(Math.random()*(max-min+1)+min);//sets x to a random int between the min and max inclusive
+y = (int) Math.floor(Math.random()*(max-min+1)+min);//sets y to a random int between the min and max inclusive
+p = new Point(x,y);//creates a point with the values of x and y
+}
+//if the point is not a wall then the loop ends
+else
+{
+isValid = true;
+}
+}
+return p;//return the random point
+}
+//randomly generates a maze with walls surrounding all four sides of the maze the walls are the char 1 and everything else is a blank space
+public static void mazeMaker(char[][] maze, double dens)
+{
+double value;
+//sets the walls of the maze to one
+for(int i = 0; i < maze.length; i++)
+{
+maze[0][i] = '1';
+maze[i][0] = '1';
+}
+for(int j = (maze.length - 1) ; j > 0; j--)
+{
+maze[(maze.length-1)][j] = '1';
+maze[j][(maze.length-1)] = '1';
+}
+//randomly fills the maze with ones and blank spaces based on the provided density
+for(int k = 1; k < (maze.length -1);k++)
+{
+for(int l = 1; l < (maze.length -1); l++)
+{
+value = Math.floor(Math.random()*(dens+1)+0);
+if(value > 0.5)
+{
+maze[k][l]= '1';
+}
+else
+{
+maze[k][l]= ' ';
+}
+}
+}
+}
+//sets all of the values in the distance array to the max integer
+public static void distanceMaker(int[][] distance)
+{
+for(int i = 0; i < distance.length; i++)
+{
+for(int j = 0 ; j < distance.length; j++)
+{
+distance[i][j] = 99;
+}
+}
+}
+//prints the char maze
+public static void printMaze(char[][] maze)
+{
+for(int i = 0; i < maze.length; i++)
+  {
+     for(int j = 0; j < maze[i].length; j++)
+     {
+        System.out.print(maze[i][j] + " ");
+     }
+     System.out.println();
+  }
+}
+//takes a Stack of Points, a char Maze, a start point, and and end point and tries to find a path from start to end
+public static void DFS(Stack<Point> stack, char[][] maze, Point startPoint, Point endPoint)
+{
+char character = 'A';//char value used to track the visited points
+stack.push(startPoint);//adds the start point to the stack
+maze [(int)startPoint.getX()][(int)startPoint.getY()] = '*';//makes start point an asterisk
+
+/*
+* while loop that repeats until a path is found in the maze
+* the path, if found, will be in the provided stack
+* if there is no path then the stack will be empty
+*/
+while (!stack.isEmpty())
+{
+//checks to see if the current point is the end point if it is then the while loop ends
+if (stack.peek().getX() == endPoint.getX() && stack.peek().getY() == endPoint.getY())
+{
+break;
+}
+//checks if the point to the right of the current point is a valid point to go to
+if (maze[(int) stack.peek().getX()][(int) (stack.peek().getY() + 1)] == ' ')
+{
+maze[(int)stack.peek().getX()][(int)stack.peek().getY() + 1] = character;
+character +=1;
+stack.push(new Point((int)stack.peek().getX(), (int)stack.peek().getY() + 1));
+}
+//checks if the point below the current point is a valid point to go to
+else if (maze[(int) (stack.peek().getX() + 1)][(int) stack.peek().getY()] == ' ')
+{
+maze[(int)stack.peek().getX() +  1][(int)stack.peek().getY()] = character;
+character +=1;
+stack.push(new Point((int)stack.peek().getX() + 1, (int)stack.peek().getY()));
+}
+//checks if the point to the left of the current point is a valid point to go to
+else if (maze[(int) stack.peek().getX()][(int) (stack.peek().getY() - 1)] == ' ')
+{
+maze[(int)stack.peek().getX()][(int)stack.peek().getY() - 1] = character;
+character +=1;
+stack.push(new Point((int)stack.peek().getX(), (int)stack.peek().getY() - 1));
+}
+//checks if the point above the current point is a valid point to go to
+else if (maze[(int) (stack.peek().getX() - 1)][(int) stack.peek().getY()] == ' ')
+{
+maze[(int)stack.peek().getX() - 1][(int)stack.peek().getY()] = character;
+character +=1;
+stack.push(new Point((int)stack.peek().getX() - 1, (int)stack.peek().getY()));
+}
+//if all four points around the current point aren't valid the current point is removed
+else
+{
+stack.pop();
+}
+}
+// if the stack is empty and there is no path the user is told so
+if(stack.isEmpty())
+{
+System.out.println("DFS: There is no path");
+}
+/*
+* makes a visible path in the maze by making the path asterisks
+*if the stack is empty then there is no path to make
+*/
+while (!stack.isEmpty())
+{
+Point current = stack.pop();//makes current the most recently added point in the stack
+maze[(int)current.getX()][(int)current.getY()] = '*';//sets the current point in the maze to a asterisk
+//sets the start and end points of the maze to S and E so they are easier to find in the Maze
+maze[(int)startPoint.getX()][(int)startPoint.getY()] = 'S';
+maze[(int)endPoint.getX()][(int)endPoint.getY()] = 'E';
+}
+}
+public static void BFS(Queue<Point> queue, char[][] maze, Point startPoint, Point endPoint, int[][] distance)
+{
+char character = 'A';//char value used to track the visited points
+queue.add(startPoint);//adds start point to queue
+distance[(int)startPoint.getX()][(int)startPoint.getY()] = 0;//sets the start point in the distance array to zero
+Point current = new Point(0,0);
+maze [(int)startPoint.getX()][(int)startPoint.getY()] = '*';//makes start point an asterisk
+int distanceNum = 0;
+//while loop that goes through the maze and finds a path using a queue
+while(!queue.isEmpty())
+{
+current = queue.remove();
+distanceNum = distance[(int)current.getX()][(int)current.getY()];
+//checks to see if current is the end point if it is the loop ends
+if(current.getX() == endPoint.getX() && current.getY() == endPoint.getY())
+{
+break;
+}
+/*
+* checks if neighbor to the right of current can be added to the queue
+* if it can then it is added and a character is set to the point to track visited points
+*/
+if(maze[(int)current.getX()][(int)current.getY() + 1] == ' ')
+{
+maze[(int)current.getX()][(int)current.getY() + 1] = character;
+character +=1;
+queue.add(new Point((int)current.getX(), (int)current.getY() + 1));
+distance[(int)current.getX()][(int)current.getY() + 1] = distanceNum + 1;
+}
+/*
+* checks if neighbor below current can be added to the queue
+* if it can then it is added and a character is set to the point to track visited points
+*/
+if(maze[((int)current.getX() + 1)][(int)current.getY()] == ' ')
+{
+maze[(int)current.getX() + 1][(int)current.getY()] = character;
+character +=1;
+queue.add(new Point(((int)current.getX() + 1),(int)current.getY()));
+distance[((int)current.getX() + 1)][(int)current.getY()] = distanceNum + 1;
+}
+/*
+* checks if neighbor to the left of current can be added to the queue
+* if it can then it is added and a character is set to the point to track visited points
+*/
+if(maze[(int)current.getX()][((int)current.getY() - 1)] == ' ')
+{
+maze[(int)current.getX()][(int)current.getY() - 1] = character;
+character +=1;
+queue.add(new Point((int)current.getX(),((int)current.getY() - 1)));
+distance[(int)current.getX()][((int)current.getY() - 1)] = distanceNum + 1;
+}
+/*
+* checks if neighbor above current can be added to the queue
+* if it can then it is added and a character is set to the point to track visited points
+*/
+if(maze[((int)current.getX() - 1)][(int)current.getY()] == ' ')
+{
+maze[(int)current.getX() - 1][(int)current.getY()] = character;
+character +=1;
+queue.add(new Point((int)current.getX() - 1,((int)current.getY())));
+distance[((int)current.getX() - 1)][(int)current.getY()] = distanceNum + 1;
+}
+}
+ 
+current = new Point((int)endPoint.getX(), (int)endPoint.getY());//sets current to end point
+int compare = distance[(int)endPoint.getX()][(int)endPoint.getY()];//sets compare to the integer value at the end point
+maze[(int)endPoint.getX()][(int)endPoint.getY()] ='*';
+//if the queue is empty then it will print that there is no path and no path will be added to the maze
+if(queue.isEmpty())
+{
+System.out.println("BFS: There is no path");
+}
+else
+{
+//while loop that goes through the distance array and prints asterisks in the maze starting at the end point
+while(compare != 0)
+{
+//compares the point to the left of the current point
+if(distance[(int)current.getX()][((int)current.getY() - 1)] < compare)
+{
+maze[(int)current.getX()][(int)current.getY() - 1] = '*';
+compare = distance[(int)current.getX()][(int)current.getY() - 1];
+current = new Point((int)current.getX(), (int)current.getY() - 1);
+}
+//compares the point above the current point
+else if(distance[(int)current.getX() - 1][((int)current.getY())] < compare)
+{
+maze[(int)current.getX() - 1][(int)current.getY()] = '*';
+compare = distance[(int)current.getX() - 1][(int)current.getY()];
+current = new Point((int)current.getX() - 1, (int)current.getY());
+}
+//compares the point below the current point
+else if(distance[(int)current.getX() + 1][((int)current.getY())] < compare)
+{
+maze[(int)current.getX() + 1][(int)current.getY()] = '*';
+compare = distance[(int)current.getX() + 1][(int)current.getY()];
+current = new Point((int)current.getX() + 1, (int)current.getY());
+}
+//compares the point to the right of the current point
+else if(distance[(int)current.getX()][((int)current.getY() + 1)] < compare)
+{
+maze[(int)current.getX()][(int)current.getY() + 1] = '*';
+compare = distance[(int)current.getX()][(int)current.getY() + 1];
+current = new Point((int)current.getX(), (int)current.getY() + 1);
+}
+}
+}
+//sets the start and end points to S and E
+maze[(int)startPoint.getX()][(int)startPoint.getY()] ='S';
+maze[(int)endPoint.getX()][(int)endPoint.getY()] ='E';
+}
+}
